@@ -1,0 +1,14 @@
+version: '3.7'
+
+services:
+  postgres:
+    container_name: 3dru_agenda_postgres
+    image: postgres
+    restart: always
+    env_file:
+      - "./vault/.env.dev"
+    volumes:
+      - "./vault/init.sql:/docker-entrypoint-initdb.d/init.sql"
+      - "./vault/data:/data/postgres"
+    ports:
+      - "5432:5432"

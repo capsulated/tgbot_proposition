@@ -1,0 +1,5 @@
+.idea
+/worker/.env.dev
+/worker/.env
+/vault/.env.dev
+/vault/.env
