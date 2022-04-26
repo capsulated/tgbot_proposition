@@ -3,23 +3,15 @@ package telegram
 import (
 	"github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"gitlab.com/logiq.one/agenda_3dru_bot/config"
+	"gitlab.com/logiq.one/agenda_3dru_bot/vault"
 	"log"
 	"net/mail"
 	"sync"
 )
 
-const commandStart = "start"
-
-const pinAsk = "Введите пин-код"
-const alreadyRegistered = "Вы уже зарегестрированы!"
-const incorrectPin = "Неверный пинкод, повторите попытку:"
-const inputEmail = "Введите адрес электронной почты"
-const incorrectEmail = "Неверный адрес электронной почты!\n"
-const initiatorRegistered = "Вы зарегистрированы. Введите Ваш вопрос на повестку планёрки одним сообщением. Приём вопросов осуществляется каждую неделю с понедельника по четверг"
-const secretaryRegistered = "Вы зарегистрированы. Подверждённые вопросы на планёрку Вам будут отправлены каждую пятницу в 10.00"
-
 type Bot struct {
 	Users         sync.Map
+	Vlt           *vault.Postgres
 	PinInitiator  string
 	PinSecretary  string
 	MainChannelId int64
@@ -33,6 +25,7 @@ type UserData struct {
 	PrevMessage string
 	Email       string
 	Registered  bool
+	Id          int64
 }
 
 type Role int32
@@ -42,7 +35,18 @@ const (
 	Secretary
 )
 
-func New(cfg *config.App) *Bot {
+const commandStart = "start"
+
+const pinAsk = "Введите пин-код"
+const alreadyRegistered = "Вы уже зарегестрированы!"
+const incorrectPin = "Неверный пинкод, повторите попытку:"
+const inputEmail = "Введите адрес электронной почты"
+const incorrectEmail = "Неверный адрес электронной почты!"
+const initiatorRegistered = "Вы зарегистрированы. Введите Ваш вопрос на повестку планёрки одним сообщением. Приём вопросов осуществляется каждую неделю с понедельника по четверг"
+const secretaryRegistered = "Вы зарегистрированы. Подверждённые вопросы на планёрку Вам будут отправлены каждую пятницу в 10.00"
+const questionSent = "Спасибо, Ваш вопрос отправлен. Можете отправить следующий вопрос."
+
+func New(cfg *config.App, vault *vault.Postgres) *Bot {
 	api, err := tgbotapi.NewBotAPI(cfg.Telegram.ApiToken)
 	if err != nil {
 		log.Fatalf("%v", err)
@@ -53,50 +57,67 @@ func New(cfg *config.App) *Bot {
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	// TODO Выберем всех юзеров из базы!
-
-	return &Bot{
+	bot := &Bot{
 		MainChannelId: cfg.Telegram.MainChannelId,
 		Api:           api,
+		Vlt:           vault,
 		PinInitiator:  cfg.Pin.Initiator,
 		PinSecretary:  cfg.Pin.Secretary,
 		Updates:       api.GetUpdatesChan(u),
 	}
+
+	users, err := vault.ListUsers()
+	if err != nil {
+		log.Fatalf("%v", err)
+	}
+
+	for _, user := range *users {
+		bot.Users.Store(
+			user.TelegramUsername,
+			UserData{
+				ChatId:     user.ChatId,
+				Role:       Role(user.RoleId),
+				Email:      user.Email,
+				Registered: true,
+				Id:         user.Id,
+			},
+		)
+	}
+
+	return bot
 }
-
-//func (b *Bot) SendMsg(msg string) {
-//
-//}
-
-//func (b *Bot) CreatePool() {
-//	poll := tgbotapi.SendPollConfig{
-//		BaseChat: tgbotapi.BaseChat{
-//			ChatID: b.MainChannelId,
-//		},
-//		Question:        "Чё каво, беяч?",
-//		Type:            "quiz",
-//		Options:         []string{"его", "того", "этого", "хз"},
-//		CorrectOptionID: 1,
-//	}
-//
-//	msg, err := b.Api.Send(poll)
-//	if err != nil {
-//		log.Println(err)
-//	} else {
-//		log.Println(msg)
-//	}
-//}
 
 func (b *Bot) Listen() {
 	for update := range b.Updates {
+		// Если кто-то проголосовал
+		if update.Poll != nil && update.Poll.Options != nil && len(update.Poll.Options) > 0 {
+			// Обновить в БД строку с вопросом
+			var yes, no, archive int
+			for _, v := range update.Poll.Options {
+				switch v.Text {
+				case "Да":
+					yes = v.VoterCount
+				case "Нет":
+					no = v.VoterCount
+				case "Архив":
+					archive = v.VoterCount
+				}
+			}
+			err := b.Vlt.VoteInitiative(update.Poll.Question, yes, no, archive)
+			if err != nil {
+				log.Println(err)
+			}
+			continue
+		}
+
+		// Если сообщение пустое
 		if update.Message == nil {
 			continue
 		}
 
 		// Если сообщение из главного (mainChannelId) канала - значит это голосование
-		// И атор - не бот
+		// И автор - не бот
 		if update.Message.Chat.ID == b.MainChannelId {
-			b.polling(&update)
 			continue
 		}
 
@@ -104,17 +125,14 @@ func (b *Bot) Listen() {
 		u, userExist := b.Users.Load(username)
 		var userData UserData
 		if userExist {
-			log.Println("USER-EXIST ", userExist)
-			log.Println("USER-DATA ", userData)
 			userData = u.(UserData)
 		}
 
-		// Если это команда /start и юзер существует и зарегестрирован
+		// Если это команда /start и юзер существует и зарегестрирован (сообщение: Вы уже зареганы!)
 		if update.Message.Command() == commandStart && userExist && userData.Registered {
 			if _, err := b.Api.Send(tgbotapi.NewMessage(update.Message.Chat.ID, alreadyRegistered)); err != nil {
 				log.Println(err)
 			}
-
 			continue
 		}
 
@@ -128,12 +146,10 @@ func (b *Bot) Listen() {
 				PrevMessage: text,
 			}
 			b.Users.Store(username, userData)
-			log.Printf("%s STORED: %v", username, userData)
 
 			if _, err := b.Api.Send(tgbotapi.NewMessage(update.Message.Chat.ID, text)); err != nil {
 				log.Println(err)
 			}
-
 			continue
 		}
 
@@ -141,16 +157,10 @@ func (b *Bot) Listen() {
 		if userExist && !userData.Registered && (userData.PrevMessage == pinAsk || userData.PrevMessage == incorrectPin) {
 			var text string
 
-			log.Println("update.Message.Text", update.Message.Text)
-			log.Println("b.PinInitiator", b.PinInitiator)
-			log.Println("b.PinSecretary", b.PinSecretary)
-			log.Println("update.Message.Text == b.PinSecretary", update.Message.Text == b.PinSecretary)
-			log.Println("update.Message.Text == b.PinInitiator", update.Message.Text == b.PinInitiator)
-
 			if update.Message.Text == b.PinInitiator || update.Message.Text == b.PinSecretary {
 				text = inputEmail
 
-				var role Role = Initiator
+				var role = Initiator
 				if update.Message.Text == b.PinSecretary {
 					role = Secretary
 				}
@@ -171,19 +181,26 @@ func (b *Bot) Listen() {
 			if _, err := b.Api.Send(tgbotapi.NewMessage(update.Message.Chat.ID, text)); err != nil {
 				log.Println(err)
 			}
+			continue
 		}
 
 		// Юзер существует, но не зарегестрирован, а предыдущее сообщение было запросом емэйла
 		if userExist && !userData.Registered && (userData.PrevMessage == inputEmail) {
 			var text string
 
-			_, err := mail.ParseAddress(update.Message.Text)
+			email, err := mail.ParseAddress(update.Message.Text)
 			if err != nil {
-				text = incorrectEmail + err.Error()
+				text = incorrectEmail
 			} else if userData.Role == Initiator {
 				text = initiatorRegistered
 			} else if userData.Role == Secretary {
 				text = secretaryRegistered
+			}
+
+			id, err := b.Vlt.CreateUser(int32(userData.Role), email.Address, username, update.Message.Chat.ID)
+			if err != nil {
+				log.Println(err)
+				continue
 			}
 
 			// Обновим данные юзера
@@ -193,55 +210,36 @@ func (b *Bot) Listen() {
 					ChatId:      update.Message.Chat.ID,
 					Role:        userData.Role,
 					PrevMessage: text,
-					Email:       update.Message.Text,
+					Email:       email.Address,
 					Registered:  true,
+					Id:          id,
 				},
 			)
-
-			// TODO запишем в базу!!!
 
 			if _, err = b.Api.Send(tgbotapi.NewMessage(update.Message.Chat.ID, text)); err != nil {
 				log.Println(err)
 			}
+			continue
 		}
 
 		// Юзер существует, зарегестрирован и является инициатором
 		if userExist && userData.Registered && userData.Role == Initiator {
-			// Записать вопрос в БД
+			_, err := b.Vlt.CreateInitiative(userData.Id, update.Message.Text)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
 			// Отправить вопрос в главный чат на голосование
-			log.Println("Записываю в БД и отправляю на голосование")
+			err = b.SendPool(update.Message.Text)
+			if err != nil {
+				log.Println(err)
+				continue
+			}
+
+			if _, err = b.Api.Send(tgbotapi.NewMessage(update.Message.Chat.ID, questionSent)); err != nil {
+				log.Println(err)
+			}
 		}
 	}
-}
-
-func (b *Bot) register(update *tgbotapi.Update) {
-	// Chek user map
-
-	// If exist - do nothing
-
-	// if not Ask PinCode
-
-	// user, chatID:
-
-	// update.Message.From.user.String()
-	// update.Message.Chat.ID
-
-	// Registration
-
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, pinAsk)
-	msg.ReplyToMessageID = update.Message.MessageID
-
-	m, err := b.Api.Send(msg)
-	if err != nil {
-		log.Println(err)
-	} else {
-		log.Println(m)
-	}
-
-	// Check pin code
-}
-
-func (b *Bot) polling(update *tgbotapi.Update) {
-	//log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
-	log.Println("...polling...")
 }

@@ -4,6 +4,7 @@ import (
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"gitlab.com/logiq.one/agenda_3dru_bot/config"
+	"gitlab.com/logiq.one/agenda_3dru_bot/scheduler"
 	"gitlab.com/logiq.one/agenda_3dru_bot/telegram"
 	"gitlab.com/logiq.one/agenda_3dru_bot/vault"
 	"os"
@@ -25,26 +26,12 @@ func main() {
 	if err != nil {
 		log.Panic(err)
 	}
-	defer vlt.DbPool.Close()
 
-	bot := telegram.New(cfg)
-
-	//poll := tgbotapi.SendPollConfig{BaseChat, "Question", []x}
-	//bot.Send(poll)
-
-	//cron := scheduler.New()
-	//
-	//go cron.Run(func (){
-	//	log.Println(time.Now())
-	//})
-
-	//bot.CreatePool()
+	bot := telegram.New(cfg, vlt)
 	go bot.Listen()
 
-	//rs := raise.New()
-
-	//wrk := worker.New(log, vlt, bot, rs)
-	//go wrk.Work()
+	cron := scheduler.New(vlt, bot)
+	go cron.Run()
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGHUP, syscall.SIGINT, syscall.SIGQUIT, syscall.SIGABRT)

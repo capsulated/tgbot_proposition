@@ -1,0 +1,7 @@
+version: 1
+packages:
+  - path: "sqlcgen"
+    name: "sqlcgen"
+    engine: "postgresql"
+    schema: "../../vault/init.sql"
+    queries: "query.sql"

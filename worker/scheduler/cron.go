@@ -2,29 +2,64 @@ package scheduler
 
 import (
 	"context"
+	"gitlab.com/logiq.one/agenda_3dru_bot/telegram"
+	"gitlab.com/logiq.one/agenda_3dru_bot/vault"
+	"log"
 	"time"
 )
 
+const runWeekday = 5
+const runHour = 10
+
 type Cron struct {
+	Vlt        *vault.Postgres
+	Bot        *telegram.Bot
 	TimeLayout string
 }
 
-func New() *Cron {
-	return &Cron{TimeLayout: "2022-04-16 22:00:00"}
+func New(vlt *vault.Postgres, bot *telegram.Bot) *Cron {
+	return &Cron{
+		Vlt:        vlt,
+		Bot:        bot,
+		TimeLayout: "2022-04-16 22:00:00",
+	}
 }
 
-func (c *Cron) Run(work func()) {
+func (c *Cron) Run() {
 	ctx := context.Background()
 
-	startTime, err := time.Parse(c.TimeLayout, "2022-04-16 22:00:00")
-	if err != nil {
-		panic(err)
+	nowWeekday := time.Now().Weekday()
+	nowHour := time.Now().Hour()
+	var diff int
+
+	if nowWeekday < runWeekday {
+		diff = runWeekday - int(nowWeekday)
+	}
+	if nowWeekday == runWeekday && nowHour < runHour {
+		diff = 0
+	}
+	if (nowWeekday == runWeekday && nowHour > runHour) || nowWeekday > runWeekday {
+		diff = runWeekday - int(nowWeekday) + 7
 	}
 
+	year, month, day := time.Now().Date()
+	startTime := time.Date(year, month, day+diff, runHour, 0, 0, 0, time.Now().Location())
+	log.Println("SCHEDULER START:", startTime)
+
+	// Delay
 	delay := time.Hour * 24 * 7 // 1 week
 
 	for range c.schedule(ctx, startTime, delay) {
-		work()
+		wonInitiative, err := c.Vlt.ListWonInitiatives(startTime.Add(-7 * 24 * time.Hour))
+		if err != nil {
+			log.Println(err.Error())
+			continue
+		}
+
+		err = c.Bot.SendWonInitiatives(wonInitiative)
+		if err != nil {
+			log.Println(err.Error())
+		}
 	}
 }
 
