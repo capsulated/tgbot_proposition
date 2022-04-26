@@ -31,7 +31,6 @@ func (c *Cron) Run() {
 	nowWeekday := time.Now().Weekday()
 	nowHour := time.Now().Hour()
 	var diff int
-
 	if nowWeekday < runWeekday {
 		diff = runWeekday - int(nowWeekday)
 	}
@@ -41,15 +40,18 @@ func (c *Cron) Run() {
 	if (nowWeekday == runWeekday && nowHour > runHour) || nowWeekday > runWeekday {
 		diff = runWeekday - int(nowWeekday) + 7
 	}
-
 	year, month, day := time.Now().Date()
 	startTime := time.Date(year, month, day+diff, runHour, 0, 0, 0, time.Now().Location())
 	log.Println("SCHEDULER START:", startTime)
 
-	// Delay
-	delay := time.Hour * 24 * 7 // 1 week
+	fiveMinutes := time.Now().Add(1 * time.Minute)
+	log.Println("5 MIN START:", fiveMinutes)
 
-	for range c.schedule(ctx, startTime, delay) {
+	// Delay
+	//delay := time.Hour * 24 * 7 // 1 week
+	delay := 5 * time.Minute
+
+	for range c.schedule(ctx, fiveMinutes, delay) {
 		wonInitiative, err := c.Vlt.ListWonInitiatives(startTime.Add(-7 * 24 * time.Hour))
 		if err != nil {
 			log.Println(err.Error())

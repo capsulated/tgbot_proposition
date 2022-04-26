@@ -34,9 +34,9 @@ func (b *Bot) SendWonInitiatives(wonInitiatives *[]model.WonInitiative) error {
 		_, ok := e[initiative.Email]
 		if !ok {
 			e[initiative.Email] = empty
-			emails += fmt.Sprintf("%s ", initiative.Question)
+			emails += fmt.Sprintf("%s ", initiative.Email)
 		}
-		questions += fmt.Sprintf("%d. %s\n", i, initiative.Question)
+		questions += fmt.Sprintf("%d. %s\n", i+1, initiative.Question)
 	}
 
 	for _, secretary := range *secretaries {
