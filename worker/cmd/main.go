@@ -1,18 +1,18 @@
 package main
 
 import (
-	"github.com/sirupsen/logrus"
 	"gitlab.com/logiq.one/agenda_3dru_bot/config"
 	"gitlab.com/logiq.one/agenda_3dru_bot/scheduler"
 	"gitlab.com/logiq.one/agenda_3dru_bot/telegram"
 	"gitlab.com/logiq.one/agenda_3dru_bot/vault"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 )
 
 func main() {
-	log := logrus.New()
+	log.SetFlags(log.Lshortfile)
 
 	cfg := config.New()
 
@@ -32,13 +32,13 @@ func main() {
 	for {
 		select {
 		case sig := <-sigs:
-			log.Warnf("OS cmd received signal %s", sig.String())
+			log.Printf("OS cmd received signal %s", sig.String())
 			switch sig {
 			//case syscall.SIGHUP:
 			//	log.Info("Logfile rotate")
 			//	break
 			case syscall.SIGINT, syscall.SIGQUIT:
-				log.Info("Graceful stop")
+				log.Println("Graceful stop")
 				os.Exit(1)
 			case syscall.SIGABRT:
 				os.Exit(1)

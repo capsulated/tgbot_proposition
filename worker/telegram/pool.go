@@ -31,6 +31,7 @@ func (b *Bot) SendWonInitiatives(wonInitiatives *[]model.WonInitiative) error {
 	var empty struct{}
 	e := make(map[string]struct{})
 	for i, initiative := range *wonInitiatives {
+		log.Println(i, ". ", initiative.Question, " ", initiative.Email)
 		_, ok := e[initiative.Email]
 		if !ok {
 			e[initiative.Email] = empty
@@ -39,6 +40,8 @@ func (b *Bot) SendWonInitiatives(wonInitiatives *[]model.WonInitiative) error {
 		questions += fmt.Sprintf("%d. %s\n", i+1, initiative.Question)
 	}
 
+	log.Println("questions: ", questions)
+	log.Println("emails: ", emails)
 	for _, secretary := range *secretaries {
 		if _, err = b.Api.Send(tgbotapi.NewMessage(secretary.ChatId, questions)); err != nil {
 			log.Println(err)
