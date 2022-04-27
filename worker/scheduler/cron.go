@@ -26,6 +26,7 @@ func New(cfg *config.App, vlt *vault.Postgres, bot *telegram.Bot) *Cron {
 		TimeLayout: "2022-04-16 22:00:00",
 		RunWeekday: cfg.Scheduler.RunWeekday,
 		RunHour:    cfg.Scheduler.RunHour,
+		RunMinute:  cfg.Scheduler.RunMinute,
 		Delay:      cfg.Scheduler.Delay,
 	}
 }
