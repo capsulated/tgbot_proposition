@@ -50,11 +50,14 @@ func (c *Cron) Run() {
 
 	year, month, day := time.Now().Date()
 	startTime := time.Date(year, month, day+diff, c.RunHour, c.RunMinute, 0, 0, time.Now().Location())
+	log.Println("SCHEDULER START TIME: ", startTime)
 
 	// Delay
 	delay := time.Minute * time.Duration(c.Delay)
+	log.Println("SCHEDULER DELAY: ", delay)
 
 	for range c.schedule(ctx, startTime, delay) {
+		log.Println("SCHEDULER TICK: ", time.Now())
 		wonInitiative, err := c.Vlt.ListWonInitiatives(startTime.Add(-1 * delay))
 		if err != nil {
 			log.Println(err.Error())

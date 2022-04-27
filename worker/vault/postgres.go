@@ -77,7 +77,7 @@ func (p *Postgres) VoteInitiative(question string, yes int, no int, archive int)
 	return err
 }
 
-func (p *Postgres) ListWonInitiatives(weekAgo time.Time) (*[]model.WonInitiative, error) {
+func (p *Postgres) ListWonInitiatives(before time.Time) (*[]model.WonInitiative, error) {
 	var wonInitiatives []model.WonInitiative
 	err := p.Db.Select(&wonInitiatives, `
 		SELECT initiative.question, "user".email
@@ -86,7 +86,7 @@ func (p *Postgres) ListWonInitiatives(weekAgo time.Time) (*[]model.WonInitiative
 		WHERE initiative.yes >= initiative.no
 		AND initiative.yes >= initiative.archive
 		AND "user".created_at > $1
-	`, weekAgo)
+	`, before)
 
 	if err != nil {
 		return nil, err
