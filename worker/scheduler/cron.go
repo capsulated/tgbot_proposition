@@ -51,15 +51,15 @@ func (c *Cron) Run() {
 
 	year, month, day := time.Now().Date()
 	startTime := time.Date(year, month, day+diff, c.RunHour, c.RunMinute, 0, 0, time.Now().Location())
-	log.Println("SCHEDULER START TIME: ", startTime)
+	log.Println("SCHEDULER START TIME:", startTime)
 
 	// Delay
 	delay := time.Minute * time.Duration(c.Delay)
-	log.Println("SCHEDULER DELAY: ", delay)
+	log.Println("SCHEDULER DELAY:", delay)
 
 	for range c.schedule(ctx, startTime, delay) {
-		log.Println("SCHEDULER TICK: ", time.Now())
-		log.Println("CREATED_AT > ", startTime.Add(-1*delay))
+		log.Println("SCHEDULER TICK:", time.Now())
+		log.Println("CREATED_AT >", startTime.Add(-1*delay))
 
 		wonInitiatives, err := c.Vlt.ListWonInitiatives(startTime.Add(-1 * delay))
 		if err != nil {
@@ -67,7 +67,7 @@ func (c *Cron) Run() {
 			continue
 		}
 
-		log.Println("WON INITIATIVES TICK: ", time.Now())
+		log.Printf("WON INITIATIVES: %v", wonInitiatives)
 		err = c.Bot.SendWonInitiatives(wonInitiatives)
 		if err != nil {
 			log.Println(err.Error())

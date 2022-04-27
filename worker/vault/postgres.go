@@ -85,7 +85,7 @@ func (p *Postgres) ListWonInitiatives(before time.Time) (*[]model.WonInitiative,
 		LEFT JOIN "user" ON initiative.user_id = "user".id
 		WHERE initiative.yes >= initiative.no
 		AND initiative.yes >= initiative.archive
-		AND "user".created_at > $1
+		AND initiative.created_at > $1
 	`, before)
 
 	if err != nil {
