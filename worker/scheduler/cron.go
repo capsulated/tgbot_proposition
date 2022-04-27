@@ -15,6 +15,7 @@ type Cron struct {
 	TimeLayout string
 	RunWeekday int
 	RunHour    int
+	RunMinute  int
 	Delay      int
 }
 
@@ -34,19 +35,21 @@ func (c *Cron) Run() {
 
 	nowWeekday := time.Now().Weekday()
 	nowHour := time.Now().Hour()
+	nowMinute := time.Now().Minute()
 
 	var diff int
 	if int(nowWeekday) < c.RunWeekday {
 		diff = c.RunWeekday - int(nowWeekday)
 	}
-	if int(nowWeekday) == c.RunWeekday && nowHour < c.RunHour {
+	if (int(nowWeekday) == c.RunWeekday && nowHour < c.RunHour) || (int(nowWeekday) == c.RunWeekday && nowHour == c.RunHour && nowMinute < c.RunMinute) {
 		diff = 0
 	}
-	if (int(nowWeekday) == c.RunWeekday && nowHour > c.RunHour) || int(nowWeekday) > c.RunWeekday {
+	if (int(nowWeekday) == c.RunWeekday && nowHour > c.RunHour) || (int(nowWeekday) == c.RunWeekday && nowHour == c.RunHour && nowMinute > c.RunMinute) || int(nowWeekday) > c.RunWeekday {
 		diff = c.RunWeekday - int(nowWeekday) + 7
 	}
+
 	year, month, day := time.Now().Date()
-	startTime := time.Date(year, month, day+diff, c.RunHour, 0, 0, 0, time.Now().Location())
+	startTime := time.Date(year, month, day+diff, c.RunHour, c.RunMinute, 0, 0, time.Now().Location())
 
 	// Delay
 	delay := time.Minute * time.Duration(c.Delay)

@@ -30,7 +30,8 @@ type pin struct {
 type scheduler struct {
 	RunWeekday int
 	RunHour    int
-	Delay      int // minutes
+	RunMinute  int
+	Delay      int // in minutes
 }
 
 func New() *App {
@@ -64,6 +65,11 @@ func New() *App {
 		panic(err)
 	}
 
+	runMinute, err := strconv.Atoi(os.Getenv("SCHEDULER_RUN_HOUR"))
+	if err != nil {
+		panic(err)
+	}
+
 	delay, err := strconv.Atoi(os.Getenv("SCHEDULER_DELAY"))
 	if err != nil {
 		panic(err)
@@ -72,6 +78,7 @@ func New() *App {
 	s := &scheduler{
 		RunWeekday: runWeekday,
 		RunHour:    runHour,
+		RunMinute:  runMinute,
 		Delay:      delay,
 	}
 
