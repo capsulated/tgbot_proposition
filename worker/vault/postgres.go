@@ -83,8 +83,8 @@ func (p *Postgres) ListWonInitiatives(weekAgo time.Time) (*[]model.WonInitiative
 		SELECT initiative.question, "user".email
 		FROM initiative
 		LEFT JOIN "user" ON initiative.user_id = "user".id
-		WHERE initiative.yes > initiative.no
-		AND initiative.yes > initiative.archive
+		WHERE initiative.yes >= initiative.no
+		AND initiative.yes >= initiative.archive
 		AND "user".created_at > $1
 	`, weekAgo)
 
