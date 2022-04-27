@@ -1,7 +1,6 @@
 package main
 
 import (
-	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 	"gitlab.com/logiq.one/agenda_3dru_bot/config"
 	"gitlab.com/logiq.one/agenda_3dru_bot/scheduler"
@@ -14,11 +13,6 @@ import (
 
 func main() {
 	log := logrus.New()
-
-	err := godotenv.Load(".env.dev")
-	if err != nil {
-		log.Panic(err)
-	}
 
 	cfg := config.New()
 

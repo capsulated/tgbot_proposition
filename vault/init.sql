@@ -5,6 +5,9 @@ create table if not exists role (
 
 comment on table role is 'Role in system';
 
+insert into role values (1, 'initiator') on conflict do nothing;
+insert into role values (2, 'secretary') on conflict do nothing;
+
 create table if not exists "user" (
     id bigserial unique not null constraint user_pkey primary key,
     role_id bigint constraint role_fk references "role" on delete no action,

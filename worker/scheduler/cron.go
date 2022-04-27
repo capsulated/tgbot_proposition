@@ -44,14 +44,14 @@ func (c *Cron) Run() {
 	startTime := time.Date(year, month, day+diff, runHour, 0, 0, 0, time.Now().Location())
 	log.Println("SCHEDULER START:", startTime)
 
-	fiveMinutes := time.Now().Add(1 * time.Minute)
-	log.Println("5 MIN START:", fiveMinutes)
+	//fiveMinutes := time.Now().Add(1 * time.Minute)
+	//log.Println("5 MIN START:", fiveMinutes)
 
 	// Delay
-	//delay := time.Hour * 24 * 7 // 1 week
-	delay := 5 * time.Minute
+	delay := time.Hour * 24 * 7 // 1 week
+	//delay := 5 * time.Minute
 
-	for range c.schedule(ctx, fiveMinutes, delay) {
+	for range c.schedule(ctx, startTime, delay) {
 		wonInitiative, err := c.Vlt.ListWonInitiatives(startTime.Add(-7 * 24 * time.Hour))
 		if err != nil {
 			log.Println(err.Error())

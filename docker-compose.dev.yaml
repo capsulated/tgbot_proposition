@@ -1,6 +1,15 @@
 version: '3.7'
 
 services:
+  app:
+    container_name: 3dru_agenda_worker
+    build: ./worker
+    restart: always
+    env_file:
+      - "./worker/.env.dev"
+    depends_on:
+      - postgres
+
   postgres:
     container_name: 3dru_agenda_postgres
     image: postgres
@@ -9,7 +18,6 @@ services:
       - "./vault/.env.dev"
     volumes:
       - "./vault/init.sql:/docker-entrypoint-initdb.d/init.sql"
-      - "./vault/init_insert.sql:/docker-entrypoint-initdb.d/init_insert.sql"
       - "./vault/data:/data/postgres"
     ports:
       - "5432:5432"
