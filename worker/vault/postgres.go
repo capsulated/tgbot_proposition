@@ -1,11 +1,11 @@
 package vault
 
 import (
+	"fmt"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/jmoiron/sqlx"
 	"gitlab.com/logiq.one/agenda_3dru_bot/config"
 	"gitlab.com/logiq.one/agenda_3dru_bot/model"
-	"time"
 )
 
 type Postgres struct {
@@ -77,16 +77,15 @@ func (p *Postgres) VoteInitiative(question string, yes int, no int, archive int)
 	return err
 }
 
-func (p *Postgres) ListWonInitiatives(before time.Time) (*[]model.WonInitiative, error) {
+func (p *Postgres) ListWonInitiatives(delay int) (*[]model.WonInitiative, error) {
 	var wonInitiatives []model.WonInitiative
-	err := p.Db.Select(&wonInitiatives, `
+	err := p.Db.Select(&wonInitiatives, fmt.Sprintf(`
 		SELECT initiative.question, "user".email
 		FROM initiative
 		LEFT JOIN "user" ON initiative.user_id = "user".id
 		WHERE initiative.yes >= initiative.no
 		AND initiative.yes >= initiative.archive
-		AND initiative.created_at > $1
-	`, before)
+		AND initiative.created_at >= NOW() - INTERVAL '%d minutes'`, delay))
 
 	if err != nil {
 		return nil, err
