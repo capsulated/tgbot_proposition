@@ -2,26 +2,30 @@ package scheduler
 
 import (
 	"context"
+	"gitlab.com/logiq.one/agenda_3dru_bot/config"
 	"gitlab.com/logiq.one/agenda_3dru_bot/telegram"
 	"gitlab.com/logiq.one/agenda_3dru_bot/vault"
 	"log"
 	"time"
 )
 
-const runWeekday = 5
-const runHour = 10
-
 type Cron struct {
 	Vlt        *vault.Postgres
 	Bot        *telegram.Bot
 	TimeLayout string
+	RunWeekday int
+	RunHour    int
+	Delay      int
 }
 
-func New(vlt *vault.Postgres, bot *telegram.Bot) *Cron {
+func New(cfg *config.App, vlt *vault.Postgres, bot *telegram.Bot) *Cron {
 	return &Cron{
 		Vlt:        vlt,
 		Bot:        bot,
 		TimeLayout: "2022-04-16 22:00:00",
+		RunWeekday: cfg.Scheduler.RunWeekday,
+		RunHour:    cfg.Scheduler.RunHour,
+		Delay:      cfg.Scheduler.Delay,
 	}
 }
 
@@ -30,29 +34,25 @@ func (c *Cron) Run() {
 
 	nowWeekday := time.Now().Weekday()
 	nowHour := time.Now().Hour()
+
 	var diff int
-	if nowWeekday < runWeekday {
-		diff = runWeekday - int(nowWeekday)
+	if int(nowWeekday) < c.RunWeekday {
+		diff = c.RunWeekday - int(nowWeekday)
 	}
-	if nowWeekday == runWeekday && nowHour < runHour {
+	if int(nowWeekday) == c.RunWeekday && nowHour < c.RunHour {
 		diff = 0
 	}
-	if (nowWeekday == runWeekday && nowHour > runHour) || nowWeekday > runWeekday {
-		diff = runWeekday - int(nowWeekday) + 7
+	if (int(nowWeekday) == c.RunWeekday && nowHour > c.RunHour) || int(nowWeekday) > c.RunWeekday {
+		diff = c.RunWeekday - int(nowWeekday) + 7
 	}
 	year, month, day := time.Now().Date()
-	startTime := time.Date(year, month, day+diff, runHour, 0, 0, 0, time.Now().Location())
-	log.Println("SCHEDULER START:", startTime)
-
-	//fiveMinutes := time.Now().Add(1 * time.Minute)
-	//log.Println("5 MIN START:", fiveMinutes)
+	startTime := time.Date(year, month, day+diff, c.RunHour, 0, 0, 0, time.Now().Location())
 
 	// Delay
-	delay := time.Hour * 24 * 7 // 1 week
-	//delay := 5 * time.Minute
+	delay := time.Minute * time.Duration(c.Delay)
 
 	for range c.schedule(ctx, startTime, delay) {
-		wonInitiative, err := c.Vlt.ListWonInitiatives(startTime.Add(-7 * 24 * time.Hour))
+		wonInitiative, err := c.Vlt.ListWonInitiatives(startTime.Add(-1 * delay))
 		if err != nil {
 			log.Println(err.Error())
 			continue

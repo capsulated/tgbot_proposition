@@ -53,5 +53,5 @@ pin codes for initiator and secretary.
 
 ### Run Service
 ```bash
-docker-compose -f docker-compose.prod.yaml up
+docker-compose -f docker-compose.prod.yaml up -d
 ```

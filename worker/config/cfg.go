@@ -6,9 +6,10 @@ import (
 )
 
 type App struct {
-	Telegram *telegram
-	Database *database
-	Pin      *pin
+	Telegram  *telegram
+	Database  *database
+	Pin       *pin
+	Scheduler *scheduler
 }
 
 type database struct {
@@ -26,9 +27,14 @@ type pin struct {
 	Secretary string
 }
 
+type scheduler struct {
+	RunWeekday int
+	RunHour    int
+	Delay      int // minutes
+}
+
 func New() *App {
 	d := &database{os.Getenv("DB_CONN_STRING")}
-	// log.Println(database.ConnStr)
 
 	telegramDebug := os.Getenv("TELEGRAM_DEBUG")
 	var debug bool
@@ -48,9 +54,31 @@ func New() *App {
 		Secretary: os.Getenv("PIN_SECRETARY"),
 	}
 
+	runWeekday, err := strconv.Atoi(os.Getenv("SCHEDULER_RUN_WEEKDAY"))
+	if err != nil {
+		panic(err)
+	}
+
+	runHour, err := strconv.Atoi(os.Getenv("SCHEDULER_RUN_HOUR"))
+	if err != nil {
+		panic(err)
+	}
+
+	delay, err := strconv.Atoi(os.Getenv("SCHEDULER_DELAY"))
+	if err != nil {
+		panic(err)
+	}
+
+	s := &scheduler{
+		RunWeekday: runWeekday,
+		RunHour:    runHour,
+		Delay:      delay,
+	}
+
 	return &App{
-		Database: d,
-		Telegram: t,
-		Pin:      p,
+		Database:  d,
+		Telegram:  t,
+		Pin:       p,
+		Scheduler: s,
 	}
 }

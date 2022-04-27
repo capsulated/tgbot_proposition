@@ -24,7 +24,7 @@ func main() {
 	bot := telegram.New(cfg, vlt)
 	go bot.Listen()
 
-	cron := scheduler.New(vlt, bot)
+	cron := scheduler.New(cfg, vlt, bot)
 	go cron.Run()
 
 	sigs := make(chan os.Signal, 1)
