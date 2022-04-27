@@ -65,7 +65,7 @@ func New() *App {
 		panic(err)
 	}
 
-	runMinute, err := strconv.Atoi(os.Getenv("SCHEDULER_RUN_HOUR"))
+	runMinute, err := strconv.Atoi(os.Getenv("SCHEDULER_RUN_MINUTE"))
 	if err != nil {
 		panic(err)
 	}

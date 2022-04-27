@@ -52,7 +52,6 @@ func (c *Cron) Run() {
 	year, month, day := time.Now().Date()
 	startTime := time.Date(year, month, day+diff, c.RunHour, c.RunMinute, 0, 0, time.Now().Location())
 	log.Println("SCHEDULER START TIME: ", startTime)
-	log.Println("MINUTE: ", c.RunMinute)
 
 	// Delay
 	delay := time.Minute * time.Duration(c.Delay)
