@@ -12,7 +12,7 @@ create table if not exists "user" (
     id bigserial unique not null constraint user_pkey primary key,
     role_id bigint constraint role_fk references "role" on delete no action,
     email text not null,
-    telegram_username varchar(255) not null,
+    telegram_username varchar(255),
     chat_id bigint,
     created_at timestamp default now() not null
 );

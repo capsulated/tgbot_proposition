@@ -20,12 +20,12 @@ type Bot struct {
 }
 
 type UserData struct {
-	ChatId      int64
-	Role        Role
-	PrevMessage string
-	Email       string
-	Registered  bool
-	Id          int64
+	TelegramUsername string
+	Role             Role
+	PrevMessage      string
+	Email            string
+	Registered       bool
+	Id               int64
 }
 
 type Role int32
@@ -73,13 +73,13 @@ func New(cfg *config.App, vault *vault.Postgres) *Bot {
 
 	for _, user := range *users {
 		bot.Users.Store(
-			user.TelegramUsername,
+			user.ChatId,
 			UserData{
-				ChatId:     user.ChatId,
-				Role:       Role(user.RoleId),
-				Email:      user.Email,
-				Registered: true,
-				Id:         user.Id,
+				TelegramUsername: user.TelegramUsername,
+				Role:             Role(user.RoleId),
+				Email:            user.Email,
+				Registered:       true,
+				Id:               user.Id,
 			},
 		)
 	}
@@ -121,8 +121,8 @@ func (b *Bot) Listen() {
 			continue
 		}
 
-		username := update.Message.From.UserName
-		u, userExist := b.Users.Load(username)
+		userId := update.Message.From.ID
+		u, userExist := b.Users.Load(userId)
 		var userData UserData
 		if userExist {
 			userData = u.(UserData)
@@ -142,10 +142,10 @@ func (b *Bot) Listen() {
 
 			// Создадим нового юзера
 			userData = UserData{
-				ChatId:      update.Message.Chat.ID,
-				PrevMessage: text,
+				TelegramUsername: update.Message.From.UserName,
+				PrevMessage:      text,
 			}
-			b.Users.Store(username, userData)
+			b.Users.Store(update.Message.From.ID, userData)
 
 			if _, err := b.Api.Send(tgbotapi.NewMessage(update.Message.Chat.ID, text)); err != nil {
 				log.Println(err)
@@ -167,11 +167,11 @@ func (b *Bot) Listen() {
 
 				// Обновим данные юзера
 				b.Users.Store(
-					username,
+					userId,
 					UserData{
-						ChatId:      update.Message.Chat.ID,
-						Role:        role,
-						PrevMessage: text,
+						TelegramUsername: update.Message.From.UserName,
+						Role:             role,
+						PrevMessage:      text,
 					},
 				)
 			} else {
@@ -197,7 +197,7 @@ func (b *Bot) Listen() {
 				text = secretaryRegistered
 			}
 
-			id, err := b.Vlt.CreateUser(int32(userData.Role), email.Address, username, update.Message.Chat.ID)
+			id, err := b.Vlt.CreateUser(int32(userData.Role), email.Address, update.Message.From.UserName, update.Message.Chat.ID)
 			if err != nil {
 				log.Println(err)
 				continue
@@ -205,14 +205,14 @@ func (b *Bot) Listen() {
 
 			// Обновим данные юзера
 			b.Users.Store(
-				username,
+				userId,
 				UserData{
-					ChatId:      update.Message.Chat.ID,
-					Role:        userData.Role,
-					PrevMessage: text,
-					Email:       email.Address,
-					Registered:  true,
-					Id:          id,
+					TelegramUsername: update.Message.From.UserName,
+					Role:             userData.Role,
+					PrevMessage:      text,
+					Email:            email.Address,
+					Registered:       true,
+					Id:               id,
 				},
 			)
 
