@@ -1,4 +1,4 @@
-# Agenda 3d.ru telegram bot
+# telegram bot
 
 ## Requirements
 - [Docker](https://docs.docker.com/engine/install/) needs to be installed on your system for the service to work.
